@@ -1,10 +1,11 @@
 # Databricks Data Profiling Demo — Caught-in-Air Model
 
-A self-contained demo of **Databricks Lakehouse Monitoring** used for **data profiling
-and drift over time**. It generates a synthetic "caught in air" baseball inference table,
-with a deliberate drift story baked in, then walks through creating a **Time series**
-monitor on it. No model is trained — the catch probabilities are synthesized directly so
-the focus stays on profiling and drift.
+A self-contained demo of **Databricks Lakehouse Monitoring** on a model inference table.
+It generates a synthetic "caught in air" baseball inference table, with a deliberate
+drift-and-degradation story baked in, then walks through creating an **Inference** monitor
+on it. Because the table carries predictions, a ground-truth label, and a model id, the
+monitor covers **data profiling, drift, and model quality** (accuracy) over time. No model
+is trained; the catch probabilities are synthesized directly.
 
 ## What's here
 
@@ -33,7 +34,8 @@ On **day 28** a bad batch lands with null `hang_time` and out-of-range `launch_a
 | Signal | What moves |
 |---|---|
 | Feature drift | `launch_speed` mean ~88 → ~92 mph |
-| Prediction drift | `predicted_caught` rate ~0.76 → ~0.91 (v2 over-predicts) |
+| Prediction drift | `predicted_caught` rate ~0.62 → ~0.83 (v2 over-predicts) |
+| Model quality | accuracy ~0.94 (`caught_v1`) → ~0.76 (`caught_v2`); `actual_caught` stays ~0.61 |
 | Data quality | `hang_time` null spike, `launch_angle` goes negative |
 
 Tune `N`, `DAYS`, `CHANGE_DAY`, `BAD_DAY` at the top of `01_generate_caught_in_air` to
@@ -48,24 +50,29 @@ reshape it.
 | Model output | `caught_probability` (0–1), `predicted_caught` (0/1) |
 | Ground truth | `actual_caught` (0/1) |
 
-## Create the monitor (Time series)
+## Create the monitor (Inference)
 
-Time series is the profile type for drift over time: profile stats per time window, plus
-drift metrics comparing each window to the one before it.
+The Inference profile is built for model output tables: per-window data profiling, drift
+(each window vs. the prior one), and model-quality metrics (accuracy and friends) when a
+label is provided, all sliced by model id.
 
 1. In Catalog Explorer, open your `caught_in_air_inference` table.
 2. **Quality** tab → **Create monitor**.
-3. **Profile type:** Time series.
-4. **Timestamp column:** `event_timestamp`.
-5. **Granularities:** `1 day`.
-6. **Slicing expressions (optional):** `model_version`, `fielder_position`, `stadium`.
-7. Leave output defaults (metric tables land in the same schema); pick a SQL warehouse for
-   the dashboard.
-8. **Create**, then **Refresh**. The first refresh backfills all 35 days.
+3. **Profile type:** Inference.
+4. **Problem type:** Classification.
+5. **Prediction column:** `predicted_caught`.
+6. **Label column:** `actual_caught` (unlocks the model-quality metrics).
+7. **Model ID column:** `model_version` (metrics computed per model id, so v1 vs v2 separate).
+8. **Timestamp column:** `event_timestamp`.
+9. **Granularities:** `1 day`.
+10. **Slicing expressions (optional):** `fielder_position`, `stadium`.
+11. Leave output defaults (metric tables land in the same schema); pick a SQL warehouse for
+    the dashboard.
+12. **Create**, then **Refresh**. The first refresh backfills all 35 days.
 
-Time series drift is consecutive-window by default (each day vs. the prior day), so no
-baseline table is needed. To compare against a fixed reference, set a baseline table in the
-monitor config instead.
+Inference drift is consecutive-window by default (each day vs. the prior day), so no
+baseline table is needed. To compare against a fixed reference (for example a healthy
+`caught_v1` slice), set a baseline table in the monitor config instead.
 
 ## Tear down / rebuild
 

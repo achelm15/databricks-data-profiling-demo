@@ -87,17 +87,22 @@ df = df.withColumn(
     F.round(F.least(F.lit(130.0), F.exp(F.lit(3.2) + F.randn() * F.lit(0.5))), 1),
 )
 
-# --- true physics probability + actual outcome ---
+# --- true "makeable" play + actual outcome (sharp, so a calibrated model scores high) ---
 df = df.withColumn(
     "logit_true",
-    F.lit(1.2) + F.lit(0.9) * (F.col("hang_time_true") - F.lit(3.5)) - F.lit(0.06) * (F.col("fielder_start_distance") - F.lit(30.0)),
+    F.lit(0.5) + F.lit(1.4) * (F.col("hang_time_true") - F.lit(2.8)) - F.lit(0.09) * (F.col("fielder_start_distance") - F.lit(26.0)),
 )
 df = df.withColumn("true_prob", F.lit(1.0) / (F.lit(1.0) + F.exp(-F.col("logit_true"))))
-df = df.withColumn("actual_caught", (F.rand() < F.col("true_prob")).cast("int"))
+df = df.withColumn("hard_label", (F.col("logit_true") >= F.lit(0.0)).cast("int"))
+# 5% irreducible label noise
+df = df.withColumn(
+    "actual_caught",
+    F.when(F.rand() < F.lit(0.05), F.lit(1) - F.col("hard_label")).otherwise(F.col("hard_label")),
+)
 
-# --- model score (v2 is miscalibrated: over-predicts catches) ---
-df = df.withColumn("model_bias", F.when(F.col("regime"), F.lit(0.8)).otherwise(F.lit(0.0)))
-df = df.withColumn("model_logit", F.col("logit_true") + F.col("model_bias") + F.randn() * F.lit(0.15))
+# --- model score: v1 calibrated; v2 miscalibrated and over-predicts catches ---
+df = df.withColumn("model_bias", F.when(F.col("regime"), F.lit(1.2)).otherwise(F.lit(0.0)))
+df = df.withColumn("model_logit", F.col("logit_true") + F.col("model_bias") + F.randn() * F.lit(0.10))
 df = df.withColumn("caught_probability", F.round(F.lit(1.0) / (F.lit(1.0) + F.exp(-F.col("model_logit"))), 4))
 df = df.withColumn("predicted_caught", (F.col("caught_probability") >= F.lit(0.5)).cast("int"))
 df = df.withColumn("model_version", F.when(F.col("regime"), F.lit("caught_v2")).otherwise(F.lit("caught_v1")))
