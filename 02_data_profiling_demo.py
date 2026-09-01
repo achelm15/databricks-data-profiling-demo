@@ -138,14 +138,14 @@
 # MAGIC %md
 # MAGIC ### Model quality by day and model version
 # MAGIC Inference monitors write model-quality metrics to the profile table on the
-# MAGIC table-level rows (`column_name = ':table'`), keyed by `model_id`. Watch `accuracy_score`
+# MAGIC table-level rows (`column_name = ':table'`), keyed by `model_version`. Watch `accuracy_score`
 # MAGIC drop when `caught_v2` takes over.
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- Runs only after the monitor has refreshed once (Inference profile with a label column).
-# MAGIC SELECT window, model_id, accuracy_score, count
+# MAGIC SELECT window, model_version, accuracy_score, count
 # MAGIC FROM caught_in_air_inference_profile_metrics
 # MAGIC WHERE column_name = ':table'
 # MAGIC   AND slice_key IS NULL          -- overall (un-sliced) rows
