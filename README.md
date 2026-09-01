@@ -9,11 +9,12 @@ is trained; the catch probabilities are synthesized directly.
 
 ## What's here
 
-| Notebook | Purpose |
+| File | Purpose |
 |---|---|
 | `00_config` | Set the target **catalog** and **schema** (widgets). Every other notebook `%run`s this. |
 | `01_generate_caught_in_air` | Build `caught_in_air_inference` (~120k rows over 35 days). |
 | `02_data_profiling_demo` | Confirm the drift in-data, UI steps for the monitor, and queries against the metric tables. |
+| `sql/prediction_quality_alert.sql` | Standalone query for a Databricks SQL Alert that fires when model accuracy drifts down (with a prediction-drift alternative). |
 
 ## Quickstart
 
@@ -73,6 +74,22 @@ label is provided, all sliced by model id.
 Inference drift is consecutive-window by default (each day vs. the prior day), so no
 baseline table is needed. To compare against a fixed reference (for example a healthy
 `caught_v1` slice), set a baseline table in the monitor config instead.
+
+## Alert on prediction-quality drift
+
+`sql/prediction_quality_alert.sql` returns the most recent window's model accuracy from the
+monitor's profile metrics table. Attach a Databricks SQL Alert to it:
+
+1. SQL editor → paste the query → set the `catalog` / `schema` parameters (defaults `main` /
+   `dqm`) → run to confirm it returns a row.
+2. Save the query, then **Create alert** on it: column `latest_accuracy`, condition **is
+   below**, threshold `0.85`.
+3. Schedule it and add a destination (email / Slack / webhook).
+
+In this demo the alert fires once `caught_v2` takes over and accuracy falls from ~0.94 to
+~0.76. The file also includes a commented alternative that alerts on `predicted_caught`
+drift (Jensen-Shannon distance) instead of accuracy. Requires the monitor to have refreshed
+at least once.
 
 ## Tear down / rebuild
 

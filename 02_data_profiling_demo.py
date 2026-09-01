@@ -154,6 +154,25 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Alert metric preview
+# MAGIC This is the value a SQL Alert would watch: the most recent window's accuracy. The
+# MAGIC repo ships the standalone alert query at `sql/prediction_quality_alert.sql` (with a
+# MAGIC prediction-drift alternative). Wire an Alert to trigger when it drops below ~0.85.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT min(accuracy_score) AS latest_accuracy
+# MAGIC FROM caught_in_air_inference_profile_metrics
+# MAGIC WHERE column_name = ':table' AND slice_key IS NULL
+# MAGIC   AND window.start = (
+# MAGIC     SELECT max(window.start) FROM caught_in_air_inference_profile_metrics
+# MAGIC     WHERE column_name = ':table' AND slice_key IS NULL
+# MAGIC   )
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### Profile metrics (per column, per window)
 
 # COMMAND ----------
