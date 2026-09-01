@@ -80,8 +80,9 @@ baseline table is needed. To compare against a fixed reference (for example a he
 `sql/prediction_quality_alert.sql` returns the most recent window's model accuracy from the
 monitor's profile metrics table. Attach a Databricks SQL Alert to it:
 
-1. SQL editor → paste the query → set the `catalog` / `schema` parameters (defaults `main` /
-   `dqm`) → run to confirm it returns a row.
+1. SQL editor → paste the query → set the `catalog` / `schema` named parameters (defaults
+   `main` / `dqm`) → run to confirm it returns a row. The table name is built from those
+   parameters with `IDENTIFIER()`, so they fill a real object reference, not a value slot.
 2. Save the query, then **Create alert** on it: column `latest_accuracy`, condition **is
    below**, threshold `0.85`.
 3. Schedule it and add a destination (email / Slack / webhook).
